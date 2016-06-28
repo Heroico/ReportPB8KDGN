@@ -1,0 +1,69 @@
+---
+title: "ExpressionAnalysis"
+author: "Alvaro Barbeira"
+date: "June 28, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preliminaries
+
+This report will compare predicted gene expressions (built using different transcriptome models) to a measured (reference) transcriptome.
+
+```{r paths, echo=FALSE}
+# Reference data
+WB_PATH <- "data/expression/Whole_Blood_Analysis.expr.txt.gz"
+# Predicted data
+PRS_BA_PATH <- "data/expression/PRS_PB8K_BETA_ALL_expression.txt.gz"
+PRS_BB_PATH <- "data/expression/PRS_PB8K_BETA_BEST_expression.txt.gz"
+PRS_ZA_PATH <- "data/expression/PRS_PB8K_ZSCORE_ALL_expression.txt.gz"
+PRS_ZB_PATH <- "data/expression/PRS_PB8K_ZSCORE_BEST_expression.txt.gz"
+DGN_PATH <- "data/expression/DGNWB_expression.txt.gz"
+source("ExpressionUtilities.R")
+```
+
+Reference expression is loaded from:
+
+```{r reference_expression, cache=TRUE}
+reference <- load_file(WB_PATH)
+```
+
+Predicted data is loaded from:
+```{r predicted_expression, cache=TRUE}
+PRS_BA <- load_file(PRS_BA_PATH)
+PRS_BB <- load_file(PRS_BB_PATH)
+PRS_ZA <- load_file(PRS_ZA_PATH)
+PRS_ZB <- load_file(PRS_ZB_PATH)
+```
+
+We will build a linear regression of predicted expression over reference expression.
+
+```{r comparison, echo=FALSE}
+comparison_results <- function(predicted, expected, tag) {
+  d1 <- predicted
+  d2 <- expected
+  
+  d1 <- d1[rownames(d1) %in% rownames(d2), colnames(d1) %in% colnames(d2)]
+  d1 <- d1[order(rownames(d1)),]
+
+  d2 <- d2[rownames(d2) %in% rownames(d1), colnames(d2) %in% colnames(d1)]
+  d2 <- d2[order(rownames(d2)),]  
+
+  results <- build_results(d1, d2)
+  results$tag <- tag
+  results
+}
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
