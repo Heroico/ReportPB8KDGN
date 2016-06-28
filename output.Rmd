@@ -28,21 +28,33 @@ source("ExpressionUtilities.R")
 Reference expression is loaded from:
 
 ```{r reference_expression, cache=TRUE}
-reference <- load_file(WB_PATH)
+REFERENCE <- load_file(WB_PATH)
 ```
 
 Predicted data is loaded from:
 ```{r predicted_expression, cache=TRUE}
 PRS_BA <- load_file(PRS_BA_PATH)
+PRS_BA$tag = "PRS_PB8K_BETA_ALL"
+
 PRS_BB <- load_file(PRS_BB_PATH)
+PRS_BB$tag = "PRS_PB8K_BETA_BEST"
+
 PRS_ZA <- load_file(PRS_ZA_PATH)
+PRS_ZA$tag = "PRS_PB8K_ZSCORE_ALL"
+
 PRS_ZB <- load_file(PRS_ZB_PATH)
+PRS_ZB$tag = "PRS_PB8K_ZSCORE_BEST"
+
+DGN <- load_file(DGN_PATH)
+DGN$tag = "EN_DGN"
+
+predicted <- list(DGN, PRS_BA, PRS_BB, PRS_ZA, PRS_ZB)
 ```
 
-We will build a linear regression of predicted expression over reference expression.
+We will build a linear regression of predicted expression over reference expression with the next function.
 
-```{r comparison, echo=FALSE}
-comparison_results <- function(predicted, expected, tag) {
+```{r comparison_method}
+comparison_results <- function(predicted, expected) {
   d1 <- predicted
   d2 <- expected
   
@@ -53,17 +65,63 @@ comparison_results <- function(predicted, expected, tag) {
   d2 <- d2[order(rownames(d2)),]  
 
   results <- build_results(d1, d2)
-  results$tag <- tag
+  results$tag <- paste0(d1$tag, "_vs_", d2$tag)
   results
 }
 ```
 
-## Including Plots
+And we'll be using some standard issue R tools:
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r, message=F, warning=F}
+library(ggplot2)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Expression analysis
+
+We'll gather all predicted expressions and run their comparison to thye reference expression.
+
+```{r comparison_run, cache=TRUE}
+WB_DGN_COMPARISON <- comparison_results(DGN, REFERENCE)
+WB_PRS_BA_COMPARISON <- comparison_results(PRS_BA, REFERENCE)
+WB_PRS_BB_COMPARISON <- comparison_results(PRS_BB, REFERENCE)
+WB_PRS_ZA_COMPARISON <- comparison_results(PRS_ZA, REFERENCE)
+WB_PRS_ZB_COMPARISON <- comparison_results(PRS_ZB, REFERENCE)
+```
+
+And then, we'll build a plot comparing the pearson coefficients among them
+```{r r2_comparison}
+build_comparison_plot_data <- function(d1, d2, facet) {
+  d1 <- d1[rownames(d1) %in% rownames(d2), ]
+  d1 <- d1[order(rownames(d1)),]
+
+  d2 <- d2[rownames(d2) %in% rownames(d1), ]
+  d2 <- d2[order(rownames(d2)),]
+  
+  result =  data.frame(x = d1$R, y = d2$R, the_facet=facet, x_label = d1$tag,  y_label = d2$tag)
+  result
+}
+```
+
+
+Lets build some plots displaying this.
+
+
+```{r plot, cache=TRUE, fig.width = 5, fig.height = 20}
+plot_data <- data.frame( x=numeric(), y=numeric(), the_facet=character(), x_label=character(), y_label = character())
+plot_data <- rbind(plot_data, build_comparison_plot_data(WB_PRS_BA_COMPARISON, WB_DGN_COMPARISON, "DGN vs PB8K-BETA-ALL"))
+plot_data <- rbind(plot_data, build_comparison_plot_data(WB_PRS_BB_COMPARISON, WB_DGN_COMPARISON, "DGN vs PB8K-BETA-BEST"))
+plot_data <- rbind(plot_data, build_comparison_plot_data(WB_PRS_ZA_COMPARISON, WB_DGN_COMPARISON, "DGN vs PB8K-ZSCORE-ALL"))
+plot_data <- rbind(plot_data, build_comparison_plot_data(WB_PRS_ZB_COMPARISON, WB_DGN_COMPARISON, "DGN vs PB8K-ZSCORE-BEST"))
+
+p<-ggplot(plot_data, aes(x=x,y=y))+
+            geom_point() + 
+            facet_wrap(~the_facet,scales="fixed",ncol=1)
+
+p2<- p +
+    geom_abline(intercept=0, slope=1) +
+      xlab(~x_label) +
+      ylab(~y_label) +
+      theme_bw(20)
+p2
+```
