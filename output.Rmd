@@ -98,16 +98,17 @@ build_comparison_plot_data <- function(d1, d2, facet) {
   d2 <- d2[rownames(d2) %in% rownames(d1), ]
   d2 <- d2[order(rownames(d2)),]
   
-  result =  data.frame(x = d1$R, y = d2$R, the_facet=facet, x_label = d1$tag,  y_label = d2$tag)
+  result <-  data.frame(x = d1$R, y = d2$R, the_facet=facet)
   result
 }
 ```
 
 
-Lets build some plots displaying this.
+Lets build some plots displaying this. **y** axis is Predicted **DGN**+ gene expression, **x** axis is predicted **PRS** gene expression,
+gathered by PRS model type([BETA/ZSCORE][BEST/ALL])
 
 
-```{r plot, cache=TRUE, fig.width = 5, fig.height = 20}
+```{r plot, cache=TRUE, fig.width = 5, fig.height = 20, echo=FALSE}
 plot_data <- data.frame( x=numeric(), y=numeric(), the_facet=character(), x_label=character(), y_label = character())
 plot_data <- rbind(plot_data, build_comparison_plot_data(WB_PRS_BA_COMPARISON, WB_DGN_COMPARISON, "DGN vs PB8K-BETA-ALL"))
 plot_data <- rbind(plot_data, build_comparison_plot_data(WB_PRS_BB_COMPARISON, WB_DGN_COMPARISON, "DGN vs PB8K-BETA-BEST"))
@@ -116,12 +117,79 @@ plot_data <- rbind(plot_data, build_comparison_plot_data(WB_PRS_ZB_COMPARISON, W
 
 p<-ggplot(plot_data, aes(x=x,y=y))+
             geom_point() + 
-            facet_wrap(~the_facet,scales="fixed",ncol=1)
+            facet_wrap(~the_facet,scales="fixed",ncol=1) +
+            ggtitle("Gene Expression")
 
 p2<- p +
     geom_abline(intercept=0, slope=1) +
-      xlab(~x_label) +
-      ylab(~y_label) +
+      xlab("PRS PB8K") +
+      ylab("DGN-WB") +
       theme_bw(20)
 p2
 ```
+
+## Metaxcan Results Analysis
+
+Lets compare Metaxcan results when using the *DGN* model versus the *PRS* model.
+
+```{r load_metaxcan_dgn, cache = TRUE, fig.width = 5, fig.height = 20, echo=FALSE}
+N_ROWS = 15
+DGN_FOLDER <- "data/metaxcan/dgn"
+dgn_files <- list.files(DGN_FOLDER)
+dgn_results <- list()
+for (file in dgn_files) {
+  path <- paste0(DGN_FOLDER, "/", file)
+  contents <- read.csv(path, nrows=N_ROWS)
+  contents <- contents[complete.cases(contents),]
+  contents <- contents[!is.nan(contents$zscore),]
+  contents <- contents[!is.infinite(contents$zscore),]
+  key <- strsplit(file, "_DGN")[[1]][1]
+  dgn_results[[key]] <- contents
+}
+
+PRS_FOLDER <- "data/metaxcan/prs_pb8k"
+prs_files <- list.files(PRS_FOLDER)
+metaxcan_plot_data <- data.frame( x=numeric(), y=numeric(), the_facet=character())
+for (prs_file in prs_files) {
+  path <- paste0(PRS_FOLDER, "/", prs_file)
+
+  contents <- read.csv(path, nrows=N_ROWS)
+  contents <- contents[!is.nan(contents$zscore),]
+  contents <- contents[!is.infinite(contents$zscore),]
+  if (length(contents$zscore) == 0) {
+      print(paste0("Skip ", path))
+      next; 
+  }
+  
+  key <- strsplit(prs_file, "_PRS_PB8K_")[[1]][1]
+  the_facet <- strsplit(prs_file, "_PRS_PB8K_")[[1]][2]
+  the_facet <- strsplit(the_facet, ".csv")[[1]][1]
+  
+  x_avg <- mean(abs(contents$zscore))
+
+  dgn_content <- dgn_results[[key]]
+  if (length(dgn_content$zscore) == 0) {
+    print(paste0("dgn skip ", key))
+    next;
+  }
+  y_avg <- mean(abs(dgn_content$zscore))
+
+  new_row = data.frame(x = x_avg, y = y_avg, the_facet = the_facet)
+  metaxcan_plot_data <- rbind(metaxcan_plot_data, new_row)
+}
+
+p<-ggplot(metaxcan_plot_data, aes(x=x,y=y))+
+            geom_point() +
+            facet_wrap(~the_facet,scales="fixed",ncol=1) +
+            ggtitle("Metaxcan Association") +
+            annotate("text", x = 8, y = 20, label = "(Phenotype Top Result Average)")
+
+p2<- p +
+    geom_abline(intercept=0, slope=1) +
+      xlab("PRS PB8k") +
+      ylab("DGN-WB") +
+      theme_bw(20)
+p2
+```
+
+
