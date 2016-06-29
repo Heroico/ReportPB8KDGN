@@ -2,7 +2,7 @@
 title: "ExpressionAnalysis"
 author: "Alvaro Barbeira"
 date: "June 28, 2016"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -79,7 +79,7 @@ library(ggplot2)
 
 ## Expression analysis
 
-We'll gather all predicted expressions and run their comparison to thye reference expression.
+We'll gather all predicted expressions and run their comparison to the reference expression.
 
 ```{r comparison_run, cache=TRUE}
 WB_DGN_COMPARISON <- comparison_results(DGN, REFERENCE)
@@ -89,7 +89,7 @@ WB_PRS_ZA_COMPARISON <- comparison_results(PRS_ZA, REFERENCE)
 WB_PRS_ZB_COMPARISON <- comparison_results(PRS_ZB, REFERENCE)
 ```
 
-And then, we'll build a plot comparing the pearson coefficients among them
+And then, we'll build a plot comparing the pearson coefficients among them.
 ```{r r2_comparison}
 build_comparison_plot_data <- function(d1, d2, facet) {
   d1 <- d1[rownames(d1) %in% rownames(d2), ]
@@ -104,7 +104,7 @@ build_comparison_plot_data <- function(d1, d2, facet) {
 ```
 
 
-Lets build some plots displaying this. **y** axis is Predicted **DGN**+ gene expression, **x** axis is predicted **PRS** gene expression,
+Lets build some plots displaying these Pearsons. **y** axis is Predicted **DGN**+ gene expression, **x** axis is predicted **PRS** gene expression,
 gathered by PRS model type([BETA/ZSCORE][BEST/ALL])
 
 
@@ -192,4 +192,7 @@ p2<- p +
 p2
 ```
 
+## Future Work
+
+The naive average doesn't take into account that for different models, different genes are picked up.
 
